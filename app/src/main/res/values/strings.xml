@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Simple Expense</string>
+    <string name="add_expense_btn_label">Add Expense</string>
 </resources>
