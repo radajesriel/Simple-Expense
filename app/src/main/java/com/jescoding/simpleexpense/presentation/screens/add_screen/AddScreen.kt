@@ -9,13 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jescoding.simpleexpense.presentation.ExpenseViewModel
 import com.jescoding.simpleexpense.presentation.screens.add_screen.components.AddButton
 import com.jescoding.simpleexpense.presentation.screens.add_screen.components.CategoriesDropdown
 import com.jescoding.simpleexpense.presentation.screens.add_screen.components.InputField
@@ -31,6 +36,8 @@ import com.jescoding.simpleexpense.presentation.screens.add_screen.components.To
 import com.jescoding.simpleexpense.presentation.screens.add_screen.components.TransactionDatePicker
 import com.jescoding.simpleexpense.presentation.screens.add_screen.utils.CurrencyVisualTransformation
 import com.jescoding.simpleexpense.presentation.ui.theme.SimpleExpenseTheme
+import androidx.compose.runtime.getValue
+import com.jescoding.simpleexpense.utils.toFormattedDate
 
 private fun validateDescription(text: String): Boolean {
     return text.isNotEmpty() && text.length >= 3
@@ -42,7 +49,13 @@ private fun validateAmount(text: String): Boolean {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddScreen() {
+fun AddScreen(viewModel: ExpenseViewModel = viewModel()) {
+
+    val amount by viewModel.amount.collectAsState()
+    val description by viewModel.description.collectAsState()
+    val date by viewModel.date.collectAsState()
+    val categoryIndex by viewModel.category.collectAsState()
+
     Scaffold(
         modifier = Modifier.background(MaterialTheme.colorScheme.surface),
         topBar = {
@@ -54,6 +67,7 @@ fun AddScreen() {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
                 ) {
                     Text(text = "Total amount")
 
@@ -66,8 +80,10 @@ fun AddScreen() {
                             .fillMaxWidth(),
                         colors = TextFieldDefaults.colors(),
                         prefix = { Text("₱") },
-                        value = "",
-                        onValueChange = {},
+                        value = amount,
+                        onValueChange = { amount ->
+                            viewModel.updateAmount(amount)
+                        },
                         keyboardType = KeyboardType.Number,
                         visualTransformation = CurrencyVisualTransformation(
                             fixedCursorAtTheEnd = true
@@ -82,9 +98,13 @@ fun AddScreen() {
                     Spacer(Modifier.height(8.dp))
 
                     CategoriesDropdown(
-                        selectedIndex = 0,
-                        items = listOf("Food", "Transport", "Entertainment"),
-                        onClick = {}
+                        selectedIndex = categoryIndex,
+                        items = viewModel.categoryRepository.getCategories(),
+                        onClick = { index ->
+                            viewModel.updateUiState { currentState ->
+                                currentState.copy(categoryIndex = index)
+                            }
+                        }
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -94,8 +114,14 @@ fun AddScreen() {
                     Spacer(Modifier.height(8.dp))
 
                     TransactionDatePicker(
-                        selectedDate = "12/24/2024",
-                        onConfirmed = {}
+                        selectedDate = date,
+                        onConfirmed = {
+                            viewModel.updateUiState { currentState ->
+                                currentState.copy(
+                                    date = it.selectedDateMillis?.toFormattedDate()
+                                )
+                            }
+                        }
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -111,9 +137,11 @@ fun AddScreen() {
                             .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                             .fillMaxWidth()
                             .height(200.dp),
-                        value = "",
+                        value = description,
                         onValueChange = {
-
+                            viewModel.updateUiState { currentState ->
+                                currentState.copy(description = it)
+                            }
                         },
                         placeholder = {
                             Text(
@@ -125,13 +153,13 @@ fun AddScreen() {
                     )
                 }
 
-
                 AddButton(
                     modifier = Modifier
-                        .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+                        .padding(16.dp)
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                 )
+
             }
         }
     )
